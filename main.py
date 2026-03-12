@@ -1,37 +1,50 @@
-from env.grid_world import GridWorld
+import time
+
+from env.grid import GridWorld
 from env.sensors import MotionSensor
-from pomdp.belief_update import BeliefState
-from agents.guard_agent import GuardAgent
-from agents.intruder_agent import IntruderAgent
 
-env = GridWorld()
+from pomdp.belief import Belief
 
-sensor = MotionSensor()
+from agents.guard import Guard
+from agents.intruder import Intruder
 
-belief = BeliefState(env.size)
+from visualization.viewer import Viewer
 
-guard = GuardAgent(belief)
 
-intruder = IntruderAgent()
+env=GridWorld()
 
-state = env.reset()
+sensor=MotionSensor()
 
-for step in range(100):
+belief=Belief(env.size)
 
-    guard_action = guard.choose_action()
-    intruder_action = intruder.choose_action()
+guard=Guard(belief)
 
-    env.guard_pos = env.move(env.guard_pos, guard_action)
-    env.intruder_pos = env.move(env.intruder_pos, intruder_action)
+intruder=Intruder()
 
-    observation = sensor.detect(env.guard_pos, env.intruder_pos)
+viewer=Viewer(env.size)
+
+env.reset()
+
+for step in range(200):
+
+    guard_action=guard.choose_action(env.guard)
+
+    intruder_action=intruder.choose_action()
+
+    env.guard=env.move(env.guard,guard_action)
+
+    env.intruder=env.move(env.intruder,intruder_action)
+
+    observation=sensor.detect(env.guard,env.intruder)
 
     belief.update(observation)
 
-    print("Step:", step)
-    print("Guard:", env.guard_pos)
-    print("Observation:", observation)
+    viewer.draw(env,belief)
 
-    if env.guard_pos == env.intruder_pos:
-        print("Guard caught intruder!")
+    if env.guard==env.intruder:
+
+        print("Guard caught intruder")
+
         break
+
+    time.sleep(0.2)

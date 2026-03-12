@@ -1,8 +1,9 @@
 import random
 
-class IntruderAgent:
 
-    ACTIONS = ["UP","DOWN","LEFT","RIGHT"]
+class Intruder:
+
+    ACTIONS=["UP","DOWN","LEFT","RIGHT"]
 
     def choose_action(self):
 

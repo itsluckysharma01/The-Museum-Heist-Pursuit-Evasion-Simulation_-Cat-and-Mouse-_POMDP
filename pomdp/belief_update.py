@@ -1,28 +1,35 @@
 import numpy as np
 
-class BeliefState:
 
-    def __init__(self, grid_size):
+class Belief:
 
-        self.grid_size = grid_size
-        self.belief = np.ones((grid_size,grid_size))
-        self.belief /= self.belief.sum()
+    def __init__(self,size):
 
-    def update(self, observation):
+        self.size=size
+
+        self.map=np.ones((size,size))
+
+        self.map/=self.map.sum()
+
+
+    def update(self,observation):
 
         if observation:
 
-            self.belief *= 1.2
+            self.map*=1.3
+
         else:
-            self.belief *= 0.9
 
-        self.belief /= self.belief.sum()
+            self.map*=0.8
 
-    def most_likely_position(self):
+        self.map/=self.map.sum()
 
-        idx = np.argmax(self.belief)
 
-        x = idx // self.grid_size
-        y = idx % self.grid_size
+    def most_likely(self):
+
+        idx=np.argmax(self.map)
+
+        x=idx//self.size
+        y=idx%self.size
 
         return [x,y]
