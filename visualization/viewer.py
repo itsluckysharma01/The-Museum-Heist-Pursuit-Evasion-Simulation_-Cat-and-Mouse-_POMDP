@@ -29,15 +29,16 @@ class Viewer:
         pygame.init()
         self.size = size
         win_w = size * CELL + PANEL_W
-        win_h = size * CELL
+        win_h = max(size * CELL, 640)   # tall enough for all panel rows
         self.screen = pygame.display.set_mode((win_w, win_h))
         pygame.display.set_caption("Cat & Mouse Museum Heist")
         self.font       = pygame.font.SysFont("Arial", 13, bold=True)
         self.title_font = pygame.font.SysFont("Arial", 14, bold=True)
         self.val_font   = pygame.font.SysFont("Consolas", 14)
 
-    def draw(self, env, belief, score=0, artifact_collected=False,
-             turn=0, whose_turn="INTRUDER", last_obs=None, last_guard_action="-"):
+    def draw(self, env, belief, theft_score=0, artifact_collected=False,
+             turn=0, whose_turn="GUARD", last_obs=None, last_guard_action="-",
+             intruder_goal="-", intruder_mode="HEIST", threat_dist=999):
         self.screen.fill(BG_COLOR)
 
         for x in range(self.size):
@@ -114,25 +115,39 @@ class Viewer:
         sep(30)
 
         # Turn counter + whose turn
-        turn_color = INTRUDER_COLOR if whose_turn == "INTRUDER" else GUARD_COLOR
+        turn_color = GUARD_COLOR if whose_turn == "GUARD" else INTRUDER_COLOR
         row("TURN", turn, 36, VALUE_COLOR)
         row("WAITING FOR", whose_turn, 68, turn_color)
         sep(100)
 
-        # Score
-        row("SCORE", score, 106, (100, 255, 140))
+        # Theft score (intruder's accumulated points)
+        row("THEFT SCORE", theft_score, 106, (255, 100, 100))
         sep(138)
 
-        # Artifact
+        # Artifact status
         art_val   = "STOLEN ✓" if artifact_collected else "In museum"
-        art_color = (255, 220, 60) if artifact_collected else (200, 200, 200)
+        art_color = (255, 80, 80) if artifact_collected else (100, 220, 100)
         row("ARTIFACT", art_val, 144, art_color)
         sep(176)
 
-        # Exhibits collected
-        collected = _TOTAL_OBJECTS - len(env.objects)
-        row("EXHIBITS", f"{collected} / {_TOTAL_OBJECTS}", 182)
+        # Intruder current goal
+        row("INTRUDER GOAL", intruder_goal, 182, (255, 160, 60))
         sep(214)
+
+        # Intruder mode + threat distance
+        _mode_colors = {
+            "HEIST":     (255, 160,  60),
+            "ESCAPE":    (100, 220, 100),
+            "FLEE":      (255,  60,  60),
+            "FLEE\u2192EXIT": (255, 120,  40),
+        }
+        mode_color = _mode_colors.get(intruder_mode, VALUE_COLOR)
+        row("INTRUDER MODE", intruder_mode, 220, mode_color)
+
+        threat_color = (255, 60, 60) if threat_dist <= 4 else \
+                       (255, 180, 60) if threat_dist <= 7 else (100, 220, 100)
+        row("THREAT DIST", f"{threat_dist} hops", 252, threat_color)
+        sep(284)
 
         # Last sensor observation
         if last_obs is None:
@@ -141,36 +156,43 @@ class Viewer:
             obs_str, obs_color = "DETECTED !", (255, 80, 80)
         else:
             obs_str, obs_color = "clear", (100, 220, 100)
-        row("LAST SENSOR", obs_str, 220, obs_color)
-        sep(252)
+        row("LAST SENSOR", obs_str, 290, obs_color)
+        sep(322)
 
         # Last guard action
-        row("GUARD ACTION", last_guard_action, 258, GUARD_COLOR)
-        sep(290)
+        row("GUARD ACTION", last_guard_action, 328, GUARD_COLOR)
+        sep(360)
 
         # Positions
         gx, gy = env.guard
-        row("GUARD POS", f"({gx}, {gy})", 296, GUARD_COLOR)
+        row("GUARD POS", f"({gx}, {gy})", 366, GUARD_COLOR)
 
         ix, iy = env.intruder
-        row("INTRUDER POS", f"({ix}, {iy})", 328, INTRUDER_COLOR)
-        sep(360)
+        row("INTRUDER POS", f"({ix}, {iy})", 398, INTRUDER_COLOR)
+        sep(430)
 
-        # Belief peak
+        # Belief peak (where guard's POMDP thinks intruder is)
         bx, by = belief.most_likely()
-        row("GUARD BELIEF", f"({bx}, {by})", 366, (200, 160, 255))
-        sep(398)
+        row("BELIEF PEAK", f"({bx}, {by})", 436, (200, 160, 255))
+        sep(468)
+
+        # Exhibits tally
+        collected = _TOTAL_OBJECTS - len(env.objects)
+        row("EXHIBITS STOLEN", f"{collected} / {_TOTAL_OBJECTS}", 474, (255, 160, 60))
+        sep(506)
 
         # Controls guide
         controls = [
-            "CONTROLS",
-            "W / A / S / D  =  move",
-            "Guard responds each turn",
-            "ESC  =  Quit",
+            "CONTROLS  (you = GUARD)",
+            "↑ / W  =  Move Up",
+            "↓ / S  =  Move Down",
+            "← / A  =  Move Left",
+            "→ / D  =  Move Right",
+            "ESC    =  Quit",
         ]
-        cy = 406
+        cy = 514
         for line in controls:
-            color = TITLE_COLOR if line == "CONTROLS" else LABEL_COLOR
+            color = TITLE_COLOR if "CONTROLS" in line else LABEL_COLOR
             self.screen.blit(self.val_font.render(line, True, color), (px + 12, cy))
             cy += 17
 
